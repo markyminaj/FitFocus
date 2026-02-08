@@ -14,6 +14,7 @@ struct CoreInteractor: GlobalInteractor {
     private let streakManager: StreakManager
     private let xpManager: ExperiencePointsManager
     private let progressManager: ProgressManager
+    private let bjjSessionManager: BJJSessionManager
 
     init(container: DependencyContainer) {
         self.appState = container.resolve(AppState.self)!
@@ -28,6 +29,7 @@ struct CoreInteractor: GlobalInteractor {
         self.streakManager = container.resolve(StreakManager.self, key: Dependencies.streakConfiguration.streakKey)!
         self.xpManager = container.resolve(ExperiencePointsManager.self, key: Dependencies.xpConfiguration.experienceKey)!
         self.progressManager = container.resolve(ProgressManager.self, key: Dependencies.progressConfiguration.progressKey)!
+        self.bjjSessionManager = container.resolve(BJJSessionManager.self)!
     }
     
     // MARK: APP STATE
@@ -319,6 +321,56 @@ struct CoreInteractor: GlobalInteractor {
         try await progressManager.deleteAllProgress()
     }
 
+    // MARK: BJJSessionManager
+
+    var bjjSessions: [BJJSessionModel] {
+        bjjSessionManager.sessions
+    }
+
+    func startListeningToSessions(userId: String) {
+        bjjSessionManager.startListening(userId: userId)
+    }
+
+    func stopListeningToSessions() {
+        bjjSessionManager.stopListening()
+    }
+
+    func createBJJSession(session: BJJSessionModel) async throws {
+        try await bjjSessionManager.createSession(session: session)
+    }
+
+    func updateBJJSessionDuration(sessionId: String, duration: TimeInterval) async throws {
+        try await bjjSessionManager.updateSessionDuration(sessionId: sessionId, duration: duration)
+    }
+
+    func updateBJJSessionRating(sessionId: String, rating: Int) async throws {
+        try await bjjSessionManager.updateSessionRating(sessionId: sessionId, rating: rating)
+    }
+
+    func updateBJJSessionNotes(sessionId: String, notes: String) async throws {
+        try await bjjSessionManager.updateSessionNotes(sessionId: sessionId, notes: notes)
+    }
+
+    func updateBJJSessionType(sessionId: String, sessionType: BJJSessionModel.SessionType) async throws {
+        try await bjjSessionManager.updateSessionType(sessionId: sessionId, sessionType: sessionType)
+    }
+
+    func updateBJJSessionTechniques(sessionId: String, techniques: [String]) async throws {
+        try await bjjSessionManager.updateSessionTechniques(sessionId: sessionId, techniques: techniques)
+    }
+
+    func deleteBJJSession(sessionId: String) async throws {
+        try await bjjSessionManager.deleteSession(sessionId: sessionId)
+    }
+
+    func getBJJSession(sessionId: String) async throws -> BJJSessionModel {
+        try await bjjSessionManager.getSession(sessionId: sessionId)
+    }
+
+    func getBJJSessions(userId: String) async throws -> [BJJSessionModel] {
+        try await bjjSessionManager.getSessions(userId: userId)
+    }
+
     // MARK: SHARED
 
     func logIn(user: UserAuthInfo, isNewUser: Bool) async throws {
@@ -340,6 +392,11 @@ struct CoreInteractor: GlobalInteractor {
 
         // Add user properties
         logManager.addUserProperties(dict: Utilities.eventParameters, isHighPriority: false)
+        
+        // Start listening to BJJ sessions after everything is set up
+        Task {
+            bjjSessionManager.startListening(userId: user.uid)
+        }
     }
 
     func signOut() async throws {
@@ -349,6 +406,7 @@ struct CoreInteractor: GlobalInteractor {
         streakManager.logOut()
         xpManager.logOut()
         await progressManager.logOut()
+        bjjSessionManager.stopListening()
     }
     
     func deleteAccount() async throws {

@@ -7,6 +7,10 @@ class HomePresenter {
     private let interactor: HomeInteractor
     private let router: HomeRouter
     
+    var sessions: [BJJSessionModel] {
+        interactor.bjjSessions
+    }
+    
     init(interactor: HomeInteractor, router: HomeRouter) {
         self.interactor = interactor
         self.router = router
@@ -65,6 +69,36 @@ class HomePresenter {
         interactor.trackEvent(event: Event.onDevSettingsFail)
         #endif
     }
+    
+    func createSession(session: BJJSessionModel) async {
+        interactor.trackEvent(event: Event.createSessionStart)
+        do {
+            try await interactor.createBJJSession(session: session)
+            interactor.trackEvent(event: Event.createSessionSuccess)
+        } catch {
+            interactor.trackEvent(event: Event.createSessionFail(error: error))
+        }
+    }
+    
+    func updateRating(sessionId: String, rating: Int) async {
+        interactor.trackEvent(event: Event.updateRatingStart)
+        do {
+            try await interactor.updateBJJSessionRating(sessionId: sessionId, rating: rating)
+            interactor.trackEvent(event: Event.updateRatingSuccess)
+        } catch {
+            interactor.trackEvent(event: Event.updateRatingFail(error: error))
+        }
+    }
+    
+    func deleteSession(sessionId: String) async {
+        interactor.trackEvent(event: Event.deleteSessionStart)
+        do {
+            try await interactor.deleteBJJSession(sessionId: sessionId)
+            interactor.trackEvent(event: Event.deleteSessionSuccess)
+        } catch {
+            interactor.trackEvent(event: Event.deleteSessionFail(error: error))
+        }
+    }
 }
 
 extension HomePresenter {
@@ -80,6 +114,15 @@ extension HomePresenter {
         case pushNotifSuccess
         case onDevSettings
         case onDevSettingsFail
+        case createSessionStart
+        case createSessionSuccess
+        case createSessionFail(error: Error)
+        case updateRatingStart
+        case updateRatingSuccess
+        case updateRatingFail(error: Error)
+        case deleteSessionStart
+        case deleteSessionSuccess
+        case deleteSessionFail(error: Error)
 
         var eventName: String {
             switch self {
@@ -93,6 +136,15 @@ extension HomePresenter {
             case .pushNotifSuccess:         return "HomeView_PushNotif_Success"
             case .onDevSettings:            return "HomeView_DevSettings"
             case .onDevSettingsFail:        return "HomeView_DevSettings_Fail"
+            case .createSessionStart:       return "HomeView_CreateSession_Start"
+            case .createSessionSuccess:     return "HomeView_CreateSession_Success"
+            case .createSessionFail:        return "HomeView_CreateSession_Fail"
+            case .updateRatingStart:        return "HomeView_UpdateRating_Start"
+            case .updateRatingSuccess:      return "HomeView_UpdateRating_Success"
+            case .updateRatingFail:         return "HomeView_UpdateRating_Fail"
+            case .deleteSessionStart:       return "HomeView_DeleteSession_Start"
+            case .deleteSessionSuccess:     return "HomeView_DeleteSession_Success"
+            case .deleteSessionFail:        return "HomeView_DeleteSession_Fail"
             }
         }
         
@@ -100,6 +152,8 @@ extension HomePresenter {
             switch self {
             case .onAppear(delegate: let delegate), .onDisappear(delegate: let delegate):
                 return delegate.eventParameters
+            case .createSessionFail(error: let error), .updateRatingFail(error: let error), .deleteSessionFail(error: let error):
+                return error.eventParameters
             default:
                 return nil
             }
@@ -107,7 +161,7 @@ extension HomePresenter {
         
         var type: LogType {
             switch self {
-            case .onDevSettingsFail:
+            case .onDevSettingsFail, .createSessionFail, .updateRatingFail, .deleteSessionFail:
                 return .severe
             default:
                 return .analytic
