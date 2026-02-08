@@ -235,12 +235,21 @@ struct OnboardingFlowDelegate {
 }
 
 @MainActor
+protocol OnboardingFlowRouter {
+    func switchToCoreModule()
+}
+
+protocol OnboardingFlowInteractor: GlobalInteractor {
+    func saveOnboardingComplete() async throws
+}
+
+@MainActor
 @Observable
 class OnboardingFlowPresenter {
-    private let interactor: any GlobalInteractor
-    private let router: any AppRouter
+    private let interactor: OnboardingFlowInteractor
+    private let router: OnboardingFlowRouter
     
-    init(interactor: any GlobalInteractor, router: any AppRouter) {
+    init(interactor: OnboardingFlowInteractor, router: OnboardingFlowRouter) {
         self.interactor = interactor
         self.router = router
     }
@@ -349,6 +358,13 @@ extension CoreBuilder {
             )
         }
     }
+}
+
+// MARK: - Router Conformance
+
+@MainActor
+extension CoreRouter: OnboardingFlowRouter {
+    // switchToCoreModule() should already be implemented in CoreRouter
 }
 
 // MARK: - Utilities
